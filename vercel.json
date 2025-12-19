@@ -1,15 +1,14 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "backend/main.py",
-      "use": "@vercel/python"
+      "source": "/rag_query",
+      "destination": "/api/rag_query"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "backend/main.py"
+  "functions": {
+    "api/rag_query.py": {
+      "runtime": "@vercel/python@3.2.13"
     }
-  ]
+  }
 }

@@ -1,52 +1,23 @@
 import os
+import sys
 import glob
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from google import genai
-from fastapi.middleware.cors import CORSMiddleware
-
-# Import Mangum for Vercel/AWS Lambda compatibility
 from mangum import Mangum
+from dotenv import load_dotenv
 
 # Load env
 load_dotenv()
 
-# CORS configuration based on environment
-if os.getenv("ENVIRONMENT") == "production":
-    # Production: Allow Vercel deployment URL and localhost for development
-    origins = [
-        "https://your-vercel-project.vercel.app",  # Replace with your actual Vercel URL
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-        "http://localhost:8080",
-        "http://localhost:5173",  # Vite default
-        "http://localhost:3000",  # Create React App default
-        "https://*.vercel.app",  # Wildcard for Vercel previews
-    ]
-else:
-    # Development: Allow all origins
-    origins = ["*"]
-
-# Setup App
+# Setup App (minimal for Vercel function)
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Setup Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY environment variable is required")
 client = genai.Client(api_key=api_key)
-
-# Create Mangum handler for Vercel compatibility
-handler = Mangum(app)
 
 class QueryRequest(BaseModel):
     query: str
@@ -59,11 +30,11 @@ def get_project_context(user_query):
     found_files = []
     for ext in included:
         found_files.extend(glob.glob(os.path.join("..", "**", ext), recursive=True))
-    
+
     # Sirf pehli 3 files ka data uthayein context ke liye (Memory bachane ke liye)
     count = 0
     for file_path in found_files:
-        if "node_modules" in file_path or "backend" in file_path:
+        if "node_modules" in file_path or "backend" in file_path or "api" in file_path:
             continue
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -76,16 +47,12 @@ def get_project_context(user_query):
         if count > 3: break
     return context
 
-@app.get("/")
-def home():
-    return {"status": "Online", "msg": "Robotics Book AI is ready"}
-
-@app.post("/rag_query")
+@app.post("/")
 async def ask_gemini(request: QueryRequest):
     try:
         context = get_project_context(request.query)
         full_prompt = context + "\n\nUser Question: " + request.query
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=full_prompt
@@ -93,3 +60,10 @@ async def ask_gemini(request: QueryRequest):
         return {"response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Create Mangum handler for Vercel compatibility
+handler = Mangum(app)
+
+# Vercel API function handler
+def main(event, context):
+    return handler(event, context)
