@@ -72,6 +72,7 @@ npm start
 3. **API Routes:**
    - API endpoints are available at `/api/rag_query` and `/rag_query`
    - The modern Vercel configuration uses rewrites and functions instead of the deprecated builds/routes
+   - Using default @vercel/python runtime for compatibility
 
 4. **Separate Deployments:**
    - Backend and frontend should be deployed as separate Vercel projects

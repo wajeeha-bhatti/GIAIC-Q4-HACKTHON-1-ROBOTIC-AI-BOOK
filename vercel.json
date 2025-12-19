@@ -8,7 +8,7 @@
   ],
   "functions": {
     "api/rag_query.py": {
-      "runtime": "@vercel/python@3.2.13"
+      "runtime": "@vercel/python"
     }
   }
 }
